@@ -1736,6 +1736,22 @@ class Ab extends BaseAb {
           await trySyncOnePeer(p, r);
         }
       }
+      // ERP 定制：个人地址簿模式下，把最近会话中服务端还没有的机器自动加入，
+      // 让机器档案随账号保留（对齐 LegacyAb 的行为）。失败时下个周期重试。
+      if (personal && fullControl()) {
+        final missing = recents
+            .where((r) => peers.firstWhereOrNull((e) => e.id == r.id) == null)
+            .toList();
+        if (missing.isNotEmpty) {
+          final errMsg = await addPeers(missing
+              .map((r) => r.toCustomJson(includingHash: true))
+              .toList());
+          if (errMsg == null) {
+            peers.addAll(missing);
+            uiUpdate = true;
+          }
+        }
+      }
       // Pull cannot be used for sync to avoid cyclic sync.
       if (uiUpdate && gFFI.abModel.currentName.value == profile.name) {
         peers.refresh();

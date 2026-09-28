@@ -229,6 +229,11 @@ class UserModel {
         loginResponse.access_token != null;
     if (isLogInDone && loginResponse.user != null) {
       _parseAndUpdateUser(loginResponse.user!);
+      // ERP 定制：登录成功后默认开启最近会话同步到个人地址簿（机器档案随账号保留），
+      // 仅在用户未显式设置过时写入
+      if (bind.mainGetLocalOption(key: syncAbOption) == '') {
+        bind.mainSetLocalOption(key: syncAbOption, value: 'Y');
+      }
     }
 
     return loginResponse;

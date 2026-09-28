@@ -125,9 +125,26 @@ Future<void> initEnv(String appType) async {
   // focus on multi-ffi on desktop first
   await initGlobalFFI();
   // await Firebase.initializeApp();
+  _presetErpApiServer();
   _registerEventHandler();
   // Update the system theme.
   updateSystemWindowTheme();
+}
+
+/// ERP 定制：api-server 未预设过时写入 ERP 后端地址。
+/// 构建时可通过 --dart-define=ERP_API_SERVER=... 覆盖；传空串可禁用预设。
+/// 标记位写在 LocalConfig，保证只应用一次，之后用户可自行修改服务器配置。
+void _presetErpApiServer() {
+  const erpApiServer = String.fromEnvironment(
+    'ERP_API_SERVER',
+    defaultValue: 'https://admin.hongyuntongxun.cn:6443/hytx',
+  );
+  if (erpApiServer.isEmpty) return;
+  if (bind.mainGetLocalOption(key: 'erp-api-server-preset').isNotEmpty) {
+    return;
+  }
+  bind.mainSetLocalOption(key: 'erp-api-server-preset', value: 'Y');
+  bind.mainSetOption(key: 'api-server', value: erpApiServer);
 }
 
 void runMainApp(bool startService) async {

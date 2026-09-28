@@ -745,6 +745,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Display Name", "display-name"),
         ("password-hidden-tip", ""),
         ("preset-password-in-use-tip", ""),
+        ("WeChat scan login", ""),
+        ("Waiting for scan...", ""),
+        ("Scanned, please confirm on your phone...", ""),
+        ("QR code expired, tap to refresh", ""),
     ].iter().cloned().collect();
 }
 

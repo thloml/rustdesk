@@ -758,5 +758,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Continue", "Doorgaan"),
         ("Browser didn't open? Use the url below to sign in.", "Is de browser niet geopend? Gebruik onderstaande URL om in te loggen."),
         ("Lock canvas", "Canvas vergrendelen"),
+        ("WeChat scan login", ""),
+        ("Waiting for scan...", ""),
+        ("Scanned, please confirm on your phone...", ""),
+        ("QR code expired, tap to refresh", ""),
     ].iter().cloned().collect();
 }

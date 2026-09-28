@@ -13,6 +13,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../common.dart';
 import './dialog.dart';
 import './oidc_auth_status.dart';
+import './wechat_qr_login.dart';
 
 const kOpSvgList = [
   'github',
@@ -986,6 +987,11 @@ Future<bool?> _openLoginDialog() async {
             userFocusNode: userFocusNode,
           ),
           thirdAuthWidget(),
+          WechatQrLoginWidget(
+            onLoginSuccess: (LoginResponse resp) async {
+              await handleLoginResponse(resp, true, close);
+            },
+          ),
         ],
       ),
       onCancel: onDialogCancel,

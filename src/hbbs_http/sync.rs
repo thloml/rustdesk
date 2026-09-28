@@ -14,9 +14,10 @@ use hbb_common::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-const TIME_HEARTBEAT: Duration = Duration::from_secs(15);
+// ERP 定制：心跳周期 10 秒，服务端下发的服务器配置最迟一个周期内生效
+const TIME_HEARTBEAT: Duration = Duration::from_secs(10);
 const UPLOAD_SYSINFO_TIMEOUT: Duration = Duration::from_secs(120);
-const TIME_CONN: Duration = Duration::from_secs(3);
+const TIME_CONN: Duration = Duration::from_secs(10);
 
 #[cfg(not(any(target_os = "ios")))]
 lazy_static::lazy_static! {
@@ -287,20 +288,30 @@ fn heartbeat_url() -> String {
 fn handle_config_options(config_options: HashMap<String, String>) {
     let mut options = Config::get_options();
     let default_settings = config::DEFAULT_SETTINGS.read().unwrap().clone();
+    let mut rendezvous_server_changed = false;
     config_options
         .iter()
-        .map(|(k, v)| {
+        .for_each(|(k, v)| {
             // Priority: user config > default advanced options.
             // Only when default advanced options are also empty, remove user option (fallback to built-in default);
             // otherwise insert an empty value so user config remains present.
-            if v.is_empty() && default_settings.get(k).map_or("", |v| v).is_empty() {
-                options.remove(k);
+            let old_value = if v.is_empty() && default_settings.get(k).map_or("", |v| v).is_empty() {
+                options.remove(k)
             } else {
-                options.insert(k.to_string(), v.to_string());
+                options.insert(k.to_string(), v.to_string())
+            };
+            // 以生效值比较（未存储视为空串），避免 absent->"" 被误判为变更导致反复重启
+            if k == keys::OPTION_CUSTOM_RENDEZVOUS_SERVER
+                && old_value.as_deref().unwrap_or("") != v.as_str()
+            {
+                // ID 服务器变更需重新注册，立即生效而不是等客户端重启
+                rendezvous_server_changed = true;
             }
-        })
-        .count();
+        });
     Config::set_options(options);
+    if rendezvous_server_changed {
+        crate::rendezvous_mediator::RendezvousMediator::restart();
+    }
 }
 
 #[allow(unused)]
