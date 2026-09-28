@@ -29,6 +29,8 @@ macro_rules! my_println{
 /// If it returns [`Some`], then the process will continue, and flutter gui will be started.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
 pub fn core_main() -> Option<Vec<String>> {
+    // ERP 定制：品牌名。须在 global_init 之前设置，配置文件/日志目录等路径由 APP_NAME 派生
+    *config::APP_NAME.write().unwrap() = "宏运桌面".to_owned();
     if !crate::common::global_init() {
         return None;
     }
