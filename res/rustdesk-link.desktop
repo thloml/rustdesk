@@ -2,9 +2,9 @@
 Name=宏运桌面
 NoDisplay=true
 MimeType=x-scheme-handler/rustdesk;
-TryExec=rustdesk
-Exec=rustdesk %u
-Icon=rustdesk
+TryExec=hongyundesk
+Exec=hongyundesk %u
+Icon=hongyundesk
 Terminal=false
 Type=Application
 StartupNotify=false

@@ -5,6 +5,7 @@ set -e
 case $1 in
     purge)
 		rm -rf /root/.config/rustdesk || true
+		rm -rf "/root/.local/share/宏运桌面" || true
         ;;
 esac
 
