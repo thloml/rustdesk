@@ -82,15 +82,17 @@ protobuf {
 }
 
 android {
-    compileSdkVersion 34
+    namespace "com.carriez.flutter_hbb"
+    compileSdkVersion 36
     sourceSets {
         main.java.srcDirs += 'src/main/kotlin'
 
-        main.proto.srcDirs += '../../../libs/hbb_common/protos'
+        main.proto.srcDirs += '../../../libs/base/protos'
         main.proto.includes += "message.proto"
     }
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         targetCompatibility JavaVersion.VERSION_1_8
         sourceCompatibility JavaVersion.VERSION_1_8
     }
@@ -99,7 +101,7 @@ android {
         // 与官方 RustDesk（com.carriez.flutter_hbb）并存：独立 applicationId
         applicationId "com.hongyun.hongyundesk"
         minSdkVersion 22
-        targetSdkVersion 33
+        targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
     }
@@ -137,6 +139,7 @@ flutter {
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.4'
     implementation 'com.google.protobuf:protobuf-javalite:3.20.1'
     implementation "androidx.media:media:1.6.0"
     implementation 'com.github.getActivity:XXPermissions:18.5'
