@@ -105,6 +105,15 @@ android {
     }
 
     signingConfigs {
+      // ERP 定制：debug 签名固定 keystore（容器构建时经 DEBUG_KEYSTORE 指到持久化文件，
+      // 保证多次构建签名一致，APK 可覆盖升级）
+      debug {
+        def debugStore = System.getenv('DEBUG_KEYSTORE') ?: "${System.getProperty('user.home')}/.android/debug.keystore"
+        storeFile file(debugStore)
+        storePassword 'android'
+        keyAlias 'androiddebugkey'
+        keyPassword 'android'
+      }
       release {
         keyAlias keystoreProperties['keyAlias']
         keyPassword keystoreProperties['keyPassword']

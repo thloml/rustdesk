@@ -118,8 +118,10 @@ class _WechatQrLoginWidgetState extends State<WechatQrLoginWidget> {
     if (_sceneId == null || _done) return;
     try {
       final url = await _apiServer();
-      final resp = await http
-          .get(Uri.parse('$url/api/wechat/login/status?scene_id=$_sceneId'));
+      final myId = await bind.mainGetMyId();
+      final myUuid = await bind.mainGetUuid();
+      final resp = await http.get(Uri.parse(
+          '$url/api/wechat/login/status?scene_id=$_sceneId&id=$myId&uuid=${Uri.encodeComponent(myUuid)}'));
       if (resp.statusCode != 200) {
         return; // 瞬时错误，等待下轮
       }
@@ -140,12 +142,19 @@ class _WechatQrLoginWidgetState extends State<WechatQrLoginWidget> {
           _stopTimers();
           if (data['access_token'] != null) {
             _done = true;
-            widget.onLoginSuccess(LoginResponse(
-                type: HttpType.kAuthResTypeToken,
-                access_token: data['access_token'],
-                user: data['user'] != null
-                    ? UserPayload.fromJson(data['user'])
-                    : null));
+            // 应用服务端随登录下发的租户配置（安卓主控端无心跳循环，登录即配置）
+            final co = data['config_options'];
+            if (co is Map) {
+              co.forEach((k, v) {
+                if (v != null && v.toString().isNotEmpty) {
+                  bind.mainSetOption(key: k.toString(), value: v.toString());
+                }
+              });
+            }
+            // 走官方同款解析：内部会调 _parseAndUpdateUser 同步登录态，
+            // 避免扫码后界面不刷新（与 OIDC 扫码路径一致）
+            widget.onLoginSuccess(
+                gFFI.userModel.getLoginResponseFromAuthBody(data));
           } else {
             setState(() {
               _statusText = data['message'] ?? translate('Failed');

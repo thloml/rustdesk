@@ -5,7 +5,7 @@ set -e
 if [ "$1" = configure ]; then
 
 	INITSYS=$(ls -al /proc/1/exe | awk -F' ' '{print $NF}' | awk -F'/' '{print $NF}')
-	ln -f -s /usr/share/hongyundesk/rustdesk /usr/bin/hongyundesk
+	ln -f -s /usr/share/hongyundesk/hongyundesk /usr/bin/hongyundesk
 
 	if [ "systemd" == "$INITSYS" ]; then
 

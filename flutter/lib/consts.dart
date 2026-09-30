@@ -701,3 +701,6 @@ extension WindowsTargetExt on int {
 }
 
 const kCheckSoftwareUpdateFinish = 'check_software_update_finish';
+
+/// ERP 定制：品牌名。Android 端 Rust 侧 APP_NAME 覆盖时机晚于 UI 首帧， Dart 侧兜底
+const String kBrandName = String.fromEnvironment('BRAND_NAME', defaultValue: '宏运桌面');
