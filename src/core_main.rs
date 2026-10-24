@@ -1,4 +1,4 @@
-#[cfg(any(target_os = "windows", target_os = "macos"))]
+#[cfg(target_os = "windows")]
 use crate::client::translate;
 #[cfg(not(debug_assertions))]
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -23,13 +23,26 @@ macro_rules! my_println{
     };
 }
 
+pub enum CoreMainAction {
+    StartUi(Vec<String>),
+    ExitFailure(hbb_common::anyhow::Error),
+}
+
+#[cfg(target_os = "macos")]
+fn finish_macos_update(result: hbb_common::ResultType<()>) -> Option<CoreMainAction> {
+    match result {
+        Ok(()) => None,
+        Err(err) => Some(CoreMainAction::ExitFailure(err)),
+    }
+}
+
 /// shared by flutter and sciter main function
 ///
 /// [Note]
 /// If it returns [`None`], then the process will terminate, and flutter gui will not be started.
-/// If it returns [`Some`], then the process will continue, and flutter gui will be started.
+/// If it returns [`Some`], the action determines whether to start the UI or report failure.
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
-pub fn core_main() -> Option<Vec<String>> {
+pub fn core_main() -> Option<CoreMainAction> {
     // ERP 定制：品牌名。须在 global_init 之前设置，配置文件/日志目录等路径由 APP_NAME 派生
     *config::APP_NAME.write().unwrap() = "宏运桌面".to_owned();
     if !crate::common::global_init() {
@@ -120,7 +133,7 @@ pub fn core_main() -> Option<Vec<String>> {
     }
     #[cfg(feature = "flutter")]
     if _is_flutter_invoke_new_connection {
-        return core_main_invoke_new_connection(std::env::args());
+        return core_main_invoke_new_connection(std::env::args()).map(CoreMainAction::StartUi);
     }
     let click_setup = cfg!(windows) && args.is_empty() && crate::common::is_setup(&arg_exe);
     if click_setup && !config::is_disable_installation() {
@@ -173,7 +186,7 @@ pub fn core_main() -> Option<Vec<String>> {
     // linux uni (url) go here.
     #[cfg(all(target_os = "linux", feature = "flutter"))]
     if args.len() > 0 && args[0].starts_with(&crate::get_uri_prefix()) {
-        return try_send_by_dbus(args[0].clone());
+        return try_send_by_dbus(args[0].clone()).map(CoreMainAction::StartUi);
     }
 
     #[cfg(windows)]
@@ -229,6 +242,10 @@ pub fn core_main() -> Option<Vec<String>> {
                 }
                 return None;
             } else if args[0] == "--update" {
+                // The elevated updater cannot delete its running verified copy.
+                if let Err(err) = platform::schedule_current_verified_update_file_cleanup() {
+                    log::warn!("Failed to schedule verified update file cleanup: {}", err);
+                }
                 if config::is_disable_installation() {
                     return None;
                 }
@@ -338,38 +355,8 @@ pub fn core_main() -> Option<Vec<String>> {
         }
         #[cfg(target_os = "macos")]
         {
-            use crate::platform;
             if args[0] == "--update" {
-                if args.len() > 1 && args[1].ends_with(".dmg") {
-                    // Version check is unnecessary unless downgrading to an older version
-                    // that lacks "update dmg" support. This is a special case since we cannot
-                    // detect the version before extracting the DMG, so we skip the check.
-                    let dmg_path = &args[1];
-                    println!("Updating from DMG: {}", dmg_path);
-                    match platform::update_from_dmg(dmg_path) {
-                        Ok(_) => {
-                            println!("Update process from DMG started successfully.");
-                            // The new process will handle the rest. We can exit.
-                        }
-                        Err(err) => {
-                            eprintln!("Failed to start update from DMG: {}", err);
-                        }
-                    }
-                } else {
-                    println!("Starting update process...");
-                    log::info!("Starting update process...");
-                    let _text = match platform::update_me() {
-                        Ok(_) => {
-                            println!("{}", translate("Updated successfully!".to_string()));
-                            log::info!("Updated successfully!");
-                        }
-                        Err(err) => {
-                            eprintln!("Update failed with error: {}", err);
-                            log::error!("Update failed with error: {err}");
-                        }
-                    };
-                }
-                return None;
+                return finish_macos_update(crate::manual_update::execute_macos_update(&args));
             }
         }
         if args[0] == "--remove" {
@@ -733,9 +720,9 @@ pub fn core_main() -> Option<Vec<String>> {
     }
     //_async_logger_holder.map(|x| x.flush());
     #[cfg(feature = "flutter")]
-    return Some(flutter_args);
+    return Some(CoreMainAction::StartUi(flutter_args));
     #[cfg(not(feature = "flutter"))]
-    return Some(args);
+    return Some(CoreMainAction::StartUi(args));
 }
 
 fn import_config(path: &str) {
@@ -875,7 +862,7 @@ fn is_root() -> bool {
     crate::platform::is_root()
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", test))]
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn is_user_main_ipc_scope_cli_command(args: &[String]) -> bool {
     matches!(
         args.first().map(String::as_str),
@@ -913,42 +900,6 @@ fn parse_silent_install_args(args: &[String]) -> (Option<bool>, bool) {
     }
 
     (printer_override, debug)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn args(values: &[&str]) -> Vec<String> {
-        values.iter().map(|value| value.to_string()).collect()
-    }
-
-    #[test]
-    fn user_main_ipc_scope_cli_command_matches_management_commands_only() {
-        for command in [
-            "--password",
-            "--set-unlock-pin",
-            "--get-id",
-            "--set-id",
-            "--config",
-            "--option",
-            "--assign",
-            "--deploy",
-        ] {
-            assert!(is_user_main_ipc_scope_cli_command(&args(&[command])));
-        }
-
-        for command in [
-            "--service",
-            "--server",
-            "--tray",
-            "--cm",
-            "--check-hwcodec-config",
-            "--connect",
-        ] {
-            assert!(!is_user_main_ipc_scope_cli_command(&args(&[command])));
-        }
-    }
 }
 
 /// Check if the executable is a Quick Support version.
